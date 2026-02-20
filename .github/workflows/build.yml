@@ -1,0 +1,43 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch: # Позволяет запустить сборку вручную
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install pyinstaller opencv-python PyQt5 mediapipe tensorflow-cpu vosk sounddevice keyboard pyttsx3
+
+    - name: Download Vosk Models
+      run: |
+        curl -L https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip -o ru.zip
+        curl -L https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip -o en.zip
+        tar -xf ru.zip
+        tar -xf en.zip
+        # Переименуем папки, чтобы они совпали с теми, что в коде (если надо)
+        # Если в коде пути "vosk-model-small-ru-0.22", то ничего менять не нужно
+
+    - name: Build EXE
+      run: |
+        python -m PyInstaller --noconfirm --onedir --windowed --add-data "labels.txt;." --add-data "model.keras;." --add-data "vosk-model-small-ru-0.22;vosk-model-small-ru-0.22" --add-data "vosk-model-small-en-us-0.15;vosk-model-small-en-us-0.15" --collect-all mediapipe --collect-all vosk --collect-all cv2 --collect-all PyQt5 e2.py
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: GestureOS-Windows-Build
+        path: dist/
